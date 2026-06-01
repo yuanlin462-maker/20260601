@@ -24,12 +24,13 @@ function setup() {
   // 建立全螢幕畫布
   createCanvas(windowWidth, windowHeight);
   
-  // 初始化障礙物（垂直長條，從上下邊緣出現）
+  // 初始化障礙物（確保不交疊）
+  let spacing = 400; // 長條形之間的固定間距
   for (let i = 0; i < 5; i++) {
     obstacles.push({
-      x: width * 0.5 + i * 350, // 初始位置在右側，且彼此拉開距離
+      x: width * 0.4 + i * spacing, // 在鏡像系統中，正值代表視覺左側
       h: random(100, 300),      // 隨機長度
-      w: 60,                    // 固定寬度（短邊）
+      w: 60,                    // 固定寬度
       speed: 3,                 // 移動速度
       isTop: random() > 0.5     // 隨機決定從上方或下方出現
     });
@@ -137,19 +138,26 @@ function draw() {
     rectMode(CORNER);
 
     for (let obs of obstacles) {
-      // 根據是否為上方障礙物，計算正確的 Y 座標（貼齊 70% 影像邊緣）
       let obsY = obs.isTop ? -imgH / 2 : imgH / 2 - obs.h;
       
       rect(obs.x, obsY, obs.w, obs.h);
 
       // 如果遊戲未結束且已正式開始，則向左移動
       if (!isGameOver && gameState === 'playing') {
-        obs.x -= obs.speed;
-        // 當長方形完全移出左側影像邊界（-imgW/2）時回收
-        if (obs.x + obs.w < -imgW / 2) {
-          obs.x = imgW / 2;
+        // 在 scale(-1, 1) 下，x 減少代表視覺上由左往右移
+        obs.x -= obs.speed; 
+
+        // 當長方形完全移出視覺右側（x 座標小於 -imgW/2 - obs.w）時回收
+        if (obs.x < -imgW / 2 - obs.w) {
+          // 找出目前所有障礙物中最左邊（x 最大）的一個
+          let farX = -imgW / 2;
+          for (let other of obstacles) {
+            if (other.x > farX) farX = other.x;
+          }
+          // 將回收的長方形放到最後面，並加上隨機間距以防交疊
+          obs.x = farX + random(350, 500); 
           obs.h = random(100, imgH * 0.5); // 重新設定隨機長度
-          obs.w = random(50, 80);          // 寬度稍微抖動
+          obs.w = 60;
           obs.isTop = random() > 0.5;      // 重新決定上下
         }
       }
@@ -162,13 +170,12 @@ function draw() {
       let y = map(noseY, 0, capture.height, -imgH / 2, imgH / 2);
 
       // 碰撞偵測邏輯
-      // 鼻尖圖片大小約為 100x100，使用 imageMode(CENTER)，所以範圍是 [x-50, x+50]
       if (!isGameOver && gameState === 'playing') {
         for (let obs of obstacles) {
           let obsY = obs.isTop ? -imgH / 2 : imgH / 2 - obs.h;
-          // 檢查鳥的範圍 (±40 像素) 是否與長方形重疊
-          if (x + 40 > obs.x && x - 40 < obs.x + obs.w &&
-              y + 40 > obsY && y - 40 < obsY + obs.h) {
+          // 以鼻尖單點 (x, y) 為準，判斷是否在黑色長方形內
+          if (x > obs.x && x < obs.x + obs.w &&
+              y > obsY && y < obsY + obs.h) {
             isGameOver = true; // 碰到長方形，停止滾動
           }
         }
