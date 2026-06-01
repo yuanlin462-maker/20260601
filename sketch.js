@@ -23,14 +23,14 @@ function setup() {
   // 建立全螢幕畫布
   createCanvas(windowWidth, windowHeight);
   
-  // 初始化障礙物（產生 5 個隨機長短的長方形）
+  // 初始化障礙物（垂直長條，從上下邊緣出現）
   for (let i = 0; i < 5; i++) {
     obstacles.push({
-      x: random(width * 0.5, width * 1.5), // 初始位置在右側外
-      y: random(-height * 0.3, height * 0.3), // 在 70% 區域內隨機高度
-      w: random(100, 300),
-      h: 30,
-      speed: random(2, 5)
+      x: width * 0.5 + i * 350, // 初始位置在右側，且彼此拉開距離
+      h: random(100, 300),      // 隨機長度
+      w: 60,                    // 固定寬度（短邊）
+      speed: 3,                 // 移動速度
+      isTop: random() > 0.5     // 隨機決定從上方或下方出現
     });
   }
 
@@ -135,16 +135,20 @@ function draw() {
     rectMode(CORNER);
 
     for (let obs of obstacles) {
-      rect(obs.x, obs.y, obs.w, obs.h);
+      // 根據是否為上方障礙物，計算正確的 Y 座標（貼齊 70% 影像邊緣）
+      let obsY = obs.isTop ? -imgH / 2 : imgH / 2 - obs.h;
+      
+      rect(obs.x, obsY, obs.w, obs.h);
 
       // 如果遊戲未結束，則向左移動
       if (!isGameOver) {
         obs.x -= obs.speed;
-        // 舊的消失後從右邊重新出現
+        // 當長方形完全移出左側影像邊界（-imgW/2）時回收
         if (obs.x + obs.w < -imgW / 2) {
           obs.x = imgW / 2;
-          obs.y = random(-imgH / 2, imgH / 2 - obs.h);
-          obs.w = random(100, 300);
+          obs.h = random(100, imgH * 0.5); // 重新設定隨機長度
+          obs.w = random(50, 80);          // 寬度稍微抖動
+          obs.isTop = random() > 0.5;      // 重新決定上下
         }
       }
     }
@@ -159,8 +163,10 @@ function draw() {
       // 鼻尖圖片大小約為 100x100，使用 imageMode(CENTER)，所以範圍是 [x-50, x+50]
       if (!isGameOver) {
         for (let obs of obstacles) {
+          let obsY = obs.isTop ? -imgH / 2 : imgH / 2 - obs.h;
+          // 檢查鳥的範圍 (±40 像素) 是否與長方形重疊
           if (x + 40 > obs.x && x - 40 < obs.x + obs.w &&
-              y + 40 > obs.y && y - 40 < obs.y + obs.h) {
+              y + 40 > obsY && y - 40 < obsY + obs.h) {
             isGameOver = true; // 碰到長方形，停止滾動
           }
         }
