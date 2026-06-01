@@ -5,6 +5,7 @@ let noseY = -1;
 let midImg, upImg, downImg;
 let noseImg; // 目前顯示的圖片
 let gameState = 'start'; // 遊戲狀態：'start' 或 'playing'
+let baselineY = -1; // 玩家一開始的 Y 座標基準
 let fadeAlpha = 0; // 控制轉場遮罩的透明度
 let isTransitioning = false; // 是否處於轉場狀態
 
@@ -33,16 +34,18 @@ function setup() {
       let newNoseX = poses[0].pose.nose.x;
       let newNoseY = poses[0].pose.nose.y;
 
-      // 偵測垂直移動方向
-      if (noseY !== -1) {
-        let threshold = 2; // 門檻值，避免微小抖動導致圖片頻繁切換
-        if (newNoseY < noseY - threshold) {
-          noseImg = upImg;    // 向上移動（Y變小）
-        } else if (newNoseY > noseY + threshold) {
-          noseImg = downImg;  // 向下移動（Y變大）
-        } else {
-          noseImg = midImg;   // 幾乎沒動時顯示中間
+      // 當進入遊戲狀態後，捕捉初始位置作為基準點
+      if (gameState === 'playing') {
+        if (baselineY === -1) {
+          baselineY = newNoseY;
         }
+
+        let threshold = 30; // 判定範圍（像素），可調整此數值來改變靈敏度
+        let diff = newNoseY - baselineY;
+
+        if (diff < -threshold) noseImg = upImg;      // 座標變小代表向上
+        else if (diff > threshold) noseImg = downImg; // 座標變大代表向下
+        else noseImg = midImg;                       // 在基準點附近則顯示中間
       }
 
       noseX = newNoseX;
