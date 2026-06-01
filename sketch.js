@@ -10,6 +10,7 @@ let fadeAlpha = 0; // 控制轉場遮罩的透明度
 let isTransitioning = false; // 是否處於轉場狀態
 let obstacles = []; // 儲存障礙物長方形
 let isGameOver = false; // 遊戲是否結束（停止滾動）
+let countdownStartTime = 0; // 紀錄倒數開始的時間
 
 function preload() {
   // 載入不同狀態的圖片
@@ -48,8 +49,8 @@ function setup() {
       let newNoseX = poses[0].pose.nose.x;
       let newNoseY = poses[0].pose.nose.y;
 
-      // 當進入遊戲狀態後，捕捉初始位置作為基準點
-      if (gameState === 'playing') {
+      // 當進入倒數或遊戲狀態後，捕捉初始位置作為基準點
+      if (gameState === 'playing' || gameState === 'countdown') {
         if (baselineY === -1) {
           baselineY = newNoseY;
         }
@@ -99,18 +100,19 @@ function draw() {
       fadeAlpha += 10;
       if (fadeAlpha >= 255) {
         fadeAlpha = 255;
-        gameState = 'playing';
+        gameState = 'countdown';
+        countdownStartTime = millis(); // 開始倒數計時
       }
     }
 
-    // 文字閃爍邏輯：利用 frameCount 控制顯示與否
+    // 按鈕文字閃爍邏輯
     if (frameCount % 60 < 30) {
       fill(0);
       textAlign(CENTER, CENTER);
       textSize(isHover ? 26 : 24); // 文字也隨之放大
       text('按下開始遊戲', width / 2, height / 2);
     }
-  } else {
+  } else if (gameState === 'countdown' || gameState === 'playing') {
     // --- 影像顯示畫面 ---
     // 設定背景顏色
     background('#e7c6ff');
@@ -140,8 +142,8 @@ function draw() {
       
       rect(obs.x, obsY, obs.w, obs.h);
 
-      // 如果遊戲未結束，則向左移動
-      if (!isGameOver) {
+      // 如果遊戲未結束且已正式開始，則向左移動
+      if (!isGameOver && gameState === 'playing') {
         obs.x -= obs.speed;
         // 當長方形完全移出左側影像邊界（-imgW/2）時回收
         if (obs.x + obs.w < -imgW / 2) {
@@ -161,7 +163,7 @@ function draw() {
 
       // 碰撞偵測邏輯
       // 鼻尖圖片大小約為 100x100，使用 imageMode(CENTER)，所以範圍是 [x-50, x+50]
-      if (!isGameOver) {
+      if (!isGameOver && gameState === 'playing') {
         for (let obs of obstacles) {
           let obsY = obs.isTop ? -imgH / 2 : imgH / 2 - obs.h;
           // 檢查鳥的範圍 (±40 像素) 是否與長方形重疊
@@ -176,6 +178,29 @@ function draw() {
       image(noseImg, x, y, 100, 100);
     }
     pop();
+
+    // --- 倒數計時文字顯示 ---
+    if (gameState === 'countdown') {
+      let elapsed = millis() - countdownStartTime;
+      let displayTxt = "";
+      
+      if (elapsed < 1000) displayTxt = "3";
+      else if (elapsed < 2000) displayTxt = "2";
+      else if (elapsed < 3000) displayTxt = "1";
+      else if (elapsed < 4000) displayTxt = "GO!";
+      else {
+        gameState = 'playing';
+      }
+
+      if (displayTxt !== "") {
+        fill(255, 255, 0); // 黃色文字
+        stroke(0);        // 黑色外框
+        strokeWeight(4);
+        textAlign(CENTER, CENTER);
+        textSize(120);
+        text(displayTxt, width / 2, height / 2);
+      }
+    }
 
     // 轉場邏輯：進入遊戲後減少透明度
     if (isTransitioning) {
