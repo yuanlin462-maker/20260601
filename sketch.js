@@ -8,6 +8,8 @@ let gameState = 'start'; // 遊戲狀態：'start' 或 'playing'
 let baselineY = -1; // 玩家一開始的 Y 座標基準
 let fadeAlpha = 0; // 控制轉場遮罩的透明度
 let isTransitioning = false; // 是否處於轉場狀態
+let obstacles = []; // 儲存障礙物長方形
+let isGameOver = false; // 遊戲是否結束（停止滾動）
 
 function preload() {
   // 載入不同狀態的圖片
@@ -20,6 +22,18 @@ function preload() {
 function setup() {
   // 建立全螢幕畫布
   createCanvas(windowWidth, windowHeight);
+  
+  // 初始化障礙物（產生 5 個隨機長短的長方形）
+  for (let i = 0; i < 5; i++) {
+    obstacles.push({
+      x: random(width * 0.5, width * 1.5), // 初始位置在右側外
+      y: random(-height * 0.3, height * 0.3), // 在 70% 區域內隨機高度
+      w: random(100, 300),
+      h: 30,
+      speed: random(2, 5)
+    });
+  }
+
   // 擷取攝影機影像
   capture = createCapture(VIDEO);
   capture.size(640, 480); // 設定固定解析度以維持辨識準確度
@@ -115,12 +129,42 @@ function draw() {
     // 繪製影像，大小為全螢幕寬高的 70%
     image(capture, 0, 0, imgW, imgH);
 
+    // --- 繪製並更新長方形障礙物 ---
+    fill(0); // 黑色長方形
+    noStroke();
+    rectMode(CORNER);
+
+    for (let obs of obstacles) {
+      rect(obs.x, obs.y, obs.w, obs.h);
+
+      // 如果遊戲未結束，則向左移動
+      if (!isGameOver) {
+        obs.x -= obs.speed;
+        // 舊的消失後從右邊重新出現
+        if (obs.x + obs.w < -imgW / 2) {
+          obs.x = imgW / 2;
+          obs.y = random(-imgH / 2, imgH / 2 - obs.h);
+          obs.w = random(100, 300);
+        }
+      }
+    }
+
     // 如果偵測到鼻尖，則在對應位置顯示圖片
     if (noseX !== -1) {
       // 將 PoseNet 原始座標映射到畫布中央顯示影像的比例範圍內
-      // 因為 X 軸已被 scale(-1, 1) 翻轉，圓點會自動跟隨鏡像位置
       let x = map(noseX, 0, capture.width, -imgW / 2, imgW / 2);
       let y = map(noseY, 0, capture.height, -imgH / 2, imgH / 2);
+
+      // 碰撞偵測邏輯
+      // 鼻尖圖片大小約為 100x100，使用 imageMode(CENTER)，所以範圍是 [x-50, x+50]
+      if (!isGameOver) {
+        for (let obs of obstacles) {
+          if (x + 40 > obs.x && x - 40 < obs.x + obs.w &&
+              y + 40 > obs.y && y - 40 < obs.y + obs.h) {
+            isGameOver = true; // 碰到長方形，停止滾動
+          }
+        }
+      }
 
       // 繪製圖片 (100x100 為示意大小，可自行調整)
       image(noseImg, x, y, 100, 100);
