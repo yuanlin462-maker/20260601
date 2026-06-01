@@ -14,6 +14,7 @@ let countdownStartTime = 0; // 紀錄倒數開始的時間
 let score = 0; // 躲過的障礙物數量
 let survivalTime = 0; // 生存秒數
 let playStartTime = 0; // 進入 playing 狀態的時間點
+let highScore = 0; // 歷史最高分
 
 function preload() {
   // 載入不同狀態的圖片
@@ -28,6 +29,8 @@ function setup() {
   createCanvas(windowWidth, windowHeight);
 
   initObstacles();
+  // 從瀏覽器讀取最高分紀錄
+  highScore = parseInt(localStorage.getItem('p5_highScore')) || 0;
 
   // 擷取攝影機影像
   capture = createCapture(VIDEO);
@@ -153,10 +156,12 @@ function draw() {
       
       rect(obs.x, obsY, obs.w, obs.h);
 
-      // 如果遊戲未結束且已正式開始，則由右至左移動
+      // 如果遊戲未結束且已正式開始，則由右至左移動，速度隨得分增加
       if (!isGameOver && gameState === 'playing') {
+        // 計算目前速度：基礎速度(3) + 每個得分加成(0.2)
+        let currentSpeed = obs.speed + (score * 0.2);
         // 在 scale(-1, 1) 下，x 增加代表視覺上由右往左移
-        obs.x += obs.speed; 
+        obs.x += currentSpeed; 
 
         // 當長方形完全移出視覺左側（x 座標大於 imgW/2）時回收
         if (obs.x > imgW / 2) {
@@ -167,7 +172,7 @@ function draw() {
             if (other.x < farX) farX = other.x;
           }
           // 將回收的長方形放到最後面（最右側），並加上間距
-          obs.x = farX - 350; 
+          obs.x = farX - (350 + score * 5); // 隨速度增加稍微拉大間距防止視覺過於擁擠
           obs.h = random(100, imgH * 0.6); // 重新設定隨機長度
           // 保持原本的 isTop 屬性即可維持交錯感
         }
@@ -193,6 +198,11 @@ function draw() {
           if (x > obs.x && x < obs.x + obs.w &&
               y > obsY && y < obsY + obs.h) {
             isGameOver = true; // 碰到長方形，停止滾動
+            // 檢查並更新最高分
+            if (score > highScore) {
+              highScore = score;
+              localStorage.setItem('p5_highScore', highScore);
+            }
           }
         }
       }
@@ -251,18 +261,27 @@ function draw() {
       textSize(80);
       stroke(255);
       strokeWeight(4);
-      text('GAME OVER', width / 2, height / 2 - 100);
+      text('GAME OVER', width / 2, height / 2 - 120);
 
       // 顯示最終分數
       fill(255);
       noStroke();
       textSize(32);
-      text(`得分: ${score}  |  時間: ${survivalTime.toFixed(1)} 秒`, width / 2, height / 2 - 20);
+      text(`得分: ${score}  |  時間: ${survivalTime.toFixed(1)} 秒`, width / 2, height / 2 - 30);
+      
+      textSize(24);
+      text(`最高紀錄: ${highScore}`, width / 2, height / 2 + 10);
+
+      if (score >= highScore && score > 0) {
+        fill(255, 255, 0);
+        text('✨ 恭喜打破紀錄！ 🎉', width / 2, height / 2 - 75);
+      }
 
       // 重新開始按鈕
       let rbW = 200, rbH = 50;
+      let buttonY = height / 2 + 80;
       let isHover = mouseX > width / 2 - rbW / 2 && mouseX < width / 2 + rbW / 2 &&
-                    mouseY > height / 2 && mouseY < height / 2 + rbH;
+                    mouseY > buttonY - rbH / 2 && mouseY < buttonY + rbH / 2;
       
       if (isHover) {
         fill('#e7c6ff');
@@ -274,11 +293,11 @@ function draw() {
       
       noStroke();
       rectMode(CENTER);
-      rect(width / 2, height / 2 + rbH / 2 + 20, rbW, rbH, 10);
+      rect(width / 2, buttonY, rbW, rbH, 10);
       
       fill(0);
       textSize(20);
-      text('重新開始', width / 2, height / 2 + rbH / 2 + 20);
+      text('重新開始', width / 2, buttonY);
       pop();
     }
 
@@ -315,9 +334,10 @@ function mousePressed() {
   } else if (isGameOver) {
     // 如果在遊戲結束畫面點擊「重新開始」按鈕
     let rbW = 200, rbH = 50;
+    let buttonY = height / 2 + 80;
     if (
       mouseX > width / 2 - rbW / 2 && mouseX < width / 2 + rbW / 2 &&
-      mouseY > height / 2 + 20 - rbH / 2 && mouseY < height / 2 + rbH / 2 + 20 + rbH
+      mouseY > buttonY - rbH / 2 && mouseY < buttonY + rbH / 2
     ) {
       baselineY = -1; // 重設基準點
       initObstacles(); // 重置障礙物
