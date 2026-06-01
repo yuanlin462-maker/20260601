@@ -14,7 +14,7 @@ function setup() {
 
   // 初始化 PoseNet 模型
   poseNet = ml5.poseNet(capture, () => console.log('模型載入成功'));
-  // 監聽辨識結果
+  // 監聽辨識結果，並更新鼻尖位置
   poseNet.on('pose', (poses) => {
     if (poses.length > 0) {
       noseX = poses[0].pose.nose.x;
@@ -34,18 +34,22 @@ function draw() {
   scale(-1, 1);
   // 設定圖片繪製模式為中心
   imageMode(CENTER);
+  
   // 繪製影像，大小為全螢幕寬高的 50%
-  image(capture, 0, 0, width * 0.5, height * 0.5);
+  let imgW = width * 0.5;
+  let imgH = height * 0.5;
+  image(capture, 0, 0, imgW, imgH);
 
-  if (noseX !== -1 && noseY !== -1) {
-    // 將辨識到的鼻尖座標對應到畫布上的縮放大小
-    // 因為影像模式是 CENTER，座標需要從中心點偏移
-    let x = map(noseX, 0, capture.width, -width * 0.25, width * 0.25);
-    let y = map(noseY, 0, capture.height, -height * 0.25, height * 0.25);
+  // 如果有偵測到鼻尖，則繪製圓點
+  if (noseX !== -1) {
+    // 將辨識到的座標 map 到畫布中間影像的相對範圍內
+    // 由於 X 軸已被 scale(-1, 1) 翻轉，圓點會自動跟隨鏡像位置
+    let x = map(noseX, 0, capture.width, -imgW / 2, imgW / 2);
+    let y = map(noseY, 0, capture.height, -imgH / 2, imgH / 2);
 
     fill(255, 255, 0); // 黃色
     noStroke();
-    ellipse(x, y, 20, 20); // 繪製黃色圓點
+    ellipse(x, y, 20, 20); // 在鼻尖繪製圓點
   }
   pop();
 }
