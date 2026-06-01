@@ -11,6 +11,9 @@ let isTransitioning = false; // 是否處於轉場狀態
 let obstacles = []; // 儲存障礙物長方形
 let isGameOver = false; // 遊戲是否結束（停止滾動）
 let countdownStartTime = 0; // 紀錄倒數開始的時間
+let score = 0; // 躲過的障礙物數量
+let survivalTime = 0; // 生存秒數
+let playStartTime = 0; // 進入 playing 狀態的時間點
 
 function preload() {
   // 載入不同狀態的圖片
@@ -23,18 +26,8 @@ function preload() {
 function setup() {
   // 建立全螢幕畫布
   createCanvas(windowWidth, windowHeight);
-  
-  // 初始化障礙物（確保不交疊）
-  let spacing = 400; // 長條形之間的固定間距
-  for (let i = 0; i < 5; i++) {
-    obstacles.push({
-      x: width * 0.4 + i * spacing, // 在鏡像系統中，正值代表視覺左側
-      h: random(100, 300),      // 隨機長度
-      w: 60,                    // 固定寬度
-      speed: 3,                 // 移動速度
-      isTop: random() > 0.5     // 隨機決定從上方或下方出現
-    });
-  }
+
+  initObstacles();
 
   // 擷取攝影機影像
   capture = createCapture(VIDEO);
@@ -68,6 +61,24 @@ function setup() {
       noseY = newNoseY;
     }
   });
+}
+
+function initObstacles() {
+  obstacles = [];
+  let spacing = 350; // 長條形之間的水平間距
+  for (let i = 0; i < 5; i++) {
+    obstacles.push({
+      // 在 scale(-1, 1) 下，負值代表視覺右側。從右側外開始排列。
+      x: -width * 0.6 - i * spacing,
+      h: random(100, height * 0.42), // 根據 70% 影像高度隨機
+      w: 80,
+      speed: 3,
+      isTop: i % 2 === 0
+    });
+  }
+  score = 0;
+  survivalTime = 0;
+  isGameOver = false;
 }
 
 function draw() {
@@ -142,25 +153,30 @@ function draw() {
       
       rect(obs.x, obsY, obs.w, obs.h);
 
-      // 如果遊戲未結束且已正式開始，則向左移動
+      // 如果遊戲未結束且已正式開始，則由右至左移動
       if (!isGameOver && gameState === 'playing') {
-        // 在 scale(-1, 1) 下，x 減少代表視覺上由左往右移
-        obs.x -= obs.speed; 
+        // 在 scale(-1, 1) 下，x 增加代表視覺上由右往左移
+        obs.x += obs.speed; 
 
-        // 當長方形完全移出視覺右側（x 座標小於 -imgW/2 - obs.w）時回收
-        if (obs.x < -imgW / 2 - obs.w) {
-          // 找出目前所有障礙物中最左邊（x 最大）的一個
-          let farX = -imgW / 2;
+        // 當長方形完全移出視覺左側（x 座標大於 imgW/2）時回收
+        if (obs.x > imgW / 2) {
+          score++; // 成功躲過一個，分數加1
+          // 找出目前所有障礙物中最右邊（x 最小）的一個
+          let farX = imgW / 2;
           for (let other of obstacles) {
-            if (other.x > farX) farX = other.x;
+            if (other.x < farX) farX = other.x;
           }
-          // 將回收的長方形放到最後面，並加上隨機間距以防交疊
-          obs.x = farX + random(350, 500); 
-          obs.h = random(100, imgH * 0.5); // 重新設定隨機長度
-          obs.w = 60;
-          obs.isTop = random() > 0.5;      // 重新決定上下
+          // 將回收的長方形放到最後面（最右側），並加上間距
+          obs.x = farX - 350; 
+          obs.h = random(100, imgH * 0.6); // 重新設定隨機長度
+          // 保持原本的 isTop 屬性即可維持交錯感
         }
       }
+    }
+
+    // 更新生存時間（僅在遊戲進行中且未結束時計算）
+    if (gameState === 'playing' && !isGameOver) {
+      survivalTime = (millis() - playStartTime) / 1000;
     }
 
     // 如果偵測到鼻尖，則在對應位置顯示圖片
@@ -173,7 +189,7 @@ function draw() {
       if (!isGameOver && gameState === 'playing') {
         for (let obs of obstacles) {
           let obsY = obs.isTop ? -imgH / 2 : imgH / 2 - obs.h;
-          // 以鼻尖單點 (x, y) 為準，判斷是否在黑色長方形內
+          // 以鼻尖單點 (x, y) 為準進行碰撞判定
           if (x > obs.x && x < obs.x + obs.w &&
               y > obsY && y < obsY + obs.h) {
             isGameOver = true; // 碰到長方形，停止滾動
@@ -197,6 +213,7 @@ function draw() {
       else if (elapsed < 4000) displayTxt = "GO!";
       else {
         gameState = 'playing';
+        playStartTime = millis(); // 紀錄正式開始的時間
       }
 
       if (displayTxt !== "") {
@@ -207,6 +224,62 @@ function draw() {
         textSize(120);
         text(displayTxt, width / 2, height / 2);
       }
+    }
+
+    // --- 繪製計分板 (左上角) ---
+    if (gameState === 'playing' || (gameState === 'countdown' && !isGameOver)) {
+      fill(255);
+      stroke(0);
+      strokeWeight(2);
+      textAlign(LEFT, TOP);
+      textSize(22);
+      text(`躲避得分: ${score}`, 30, 30);
+      text(`生存時間: ${survivalTime.toFixed(1)}s`, 30, 60);
+    }
+
+    // --- 遊戲結束介面 ---
+    if (isGameOver) {
+      push();
+      // 半透明黑色遮罩
+      fill(0, 150);
+      rectMode(CORNER);
+      rect(0, 0, width, height);
+
+      // GAME OVER 文字
+      fill(255, 0, 0);
+      textAlign(CENTER, CENTER);
+      textSize(80);
+      stroke(255);
+      strokeWeight(4);
+      text('GAME OVER', width / 2, height / 2 - 100);
+
+      // 顯示最終分數
+      fill(255);
+      noStroke();
+      textSize(32);
+      text(`得分: ${score}  |  時間: ${survivalTime.toFixed(1)} 秒`, width / 2, height / 2 - 20);
+
+      // 重新開始按鈕
+      let rbW = 200, rbH = 50;
+      let isHover = mouseX > width / 2 - rbW / 2 && mouseX < width / 2 + rbW / 2 &&
+                    mouseY > height / 2 && mouseY < height / 2 + rbH;
+      
+      if (isHover) {
+        fill('#e7c6ff');
+        rbW *= 1.1;
+        rbH *= 1.1;
+      } else {
+        fill(255);
+      }
+      
+      noStroke();
+      rectMode(CENTER);
+      rect(width / 2, height / 2 + rbH / 2 + 20, rbW, rbH, 10);
+      
+      fill(0);
+      textSize(20);
+      text('重新開始', width / 2, height / 2 + rbH / 2 + 20);
+      pop();
     }
 
     // 轉場邏輯：進入遊戲後減少透明度
@@ -238,6 +311,18 @@ function mousePressed() {
       mouseY > height / 2 - btnH / 2 && mouseY < height / 2 + btnH / 2
     ) {
       isTransitioning = true;
+    }
+  } else if (isGameOver) {
+    // 如果在遊戲結束畫面點擊「重新開始」按鈕
+    let rbW = 200, rbH = 50;
+    if (
+      mouseX > width / 2 - rbW / 2 && mouseX < width / 2 + rbW / 2 &&
+      mouseY > height / 2 + 20 - rbH / 2 && mouseY < height / 2 + rbH / 2 + 20 + rbH
+    ) {
+      baselineY = -1; // 重設基準點
+      initObstacles(); // 重置障礙物
+      gameState = 'countdown'; // 回到倒數狀態
+      countdownStartTime = millis();
     }
   }
 }
