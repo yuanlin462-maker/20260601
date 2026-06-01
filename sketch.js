@@ -9,7 +9,7 @@ let isTransitioning = false; // 是否處於轉場狀態
 
 function preload() {
   // 載入鼻尖要顯示的圖片
-  noseImg = loadImage('圖片/中.jpg');
+  noseImg = loadImage('圖片/中.png');
 }
 
 function setup() {
