@@ -2,14 +2,18 @@ let capture;
 let poseNet;
 let noseX = -1;
 let noseY = -1;
-let noseImg;
+let midImg, upImg, downImg;
+let noseImg; // 目前顯示的圖片
 let gameState = 'start'; // 遊戲狀態：'start' 或 'playing'
 let fadeAlpha = 0; // 控制轉場遮罩的透明度
 let isTransitioning = false; // 是否處於轉場狀態
 
 function preload() {
-  // 載入鼻尖要顯示的圖片
-  noseImg = loadImage('圖片/中.png');
+  // 載入不同狀態的圖片
+  midImg = loadImage('圖片/中.png');
+  upImg = loadImage('圖片/上.png');
+  downImg = loadImage('圖片/下.png');
+  noseImg = midImg; // 初始預設為中
 }
 
 function setup() {
@@ -24,10 +28,25 @@ function setup() {
   // 初始化 PoseNet 模型
   poseNet = ml5.poseNet(capture, () => console.log('PoseNet 模型已載入'));
   // 監聽辨識結果，更新鼻尖位置
-  poseNet.on('pose', (results) => {
-    if (results.length > 0) {
-      noseX = results[0].pose.nose.x;
-      noseY = results[0].pose.nose.y;
+  poseNet.on('pose', (poses) => {
+    if (poses.length > 0) {
+      let newNoseX = poses[0].pose.nose.x;
+      let newNoseY = poses[0].pose.nose.y;
+
+      // 偵測垂直移動方向
+      if (noseY !== -1) {
+        let threshold = 2; // 門檻值，避免微小抖動導致圖片頻繁切換
+        if (newNoseY < noseY - threshold) {
+          noseImg = upImg;    // 向上移動（Y變小）
+        } else if (newNoseY > noseY + threshold) {
+          noseImg = downImg;  // 向下移動（Y變大）
+        } else {
+          noseImg = midImg;   // 幾乎沒動時顯示中間
+        }
+      }
+
+      noseX = newNoseX;
+      noseY = newNoseY;
     }
   });
 }
