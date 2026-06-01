@@ -1,15 +1,35 @@
 let capture;
+let poseNet;
+let noseX = -1;
+let noseY = -1;
+let noseImg;
 let gameState = 'start'; // 遊戲狀態：'start' 或 'playing'
 let fadeAlpha = 0; // 控制轉場遮罩的透明度
 let isTransitioning = false; // 是否處於轉場狀態
+
+function preload() {
+  // 載入鼻尖要顯示的圖片
+  noseImg = loadImage('圖片/中.jpg');
+}
 
 function setup() {
   // 建立全螢幕畫布
   createCanvas(windowWidth, windowHeight);
   // 擷取攝影機影像
   capture = createCapture(VIDEO);
+  capture.size(640, 480); // 設定固定解析度以維持辨識準確度
   // 隱藏預設的 HTML5 影片元件，只在畫布上繪製
   capture.hide();
+
+  // 初始化 PoseNet 模型
+  poseNet = ml5.poseNet(capture, () => console.log('PoseNet 模型已載入'));
+  // 監聽辨識結果，更新鼻尖位置
+  poseNet.on('pose', (results) => {
+    if (results.length > 0) {
+      noseX = results[0].pose.nose.x;
+      noseY = results[0].pose.nose.y;
+    }
+  });
 }
 
 function draw() {
@@ -67,8 +87,22 @@ function draw() {
     // 設定圖片繪製模式為中心
     imageMode(CENTER);
     
-    // 繪製影像，大小為全螢幕寬高的 50%
-    image(capture, 0, 0, width * 0.5, height * 0.5);
+    let imgW = width * 0.7;
+    let imgH = height * 0.7;
+
+    // 繪製影像，大小為全螢幕寬高的 70%
+    image(capture, 0, 0, imgW, imgH);
+
+    // 如果偵測到鼻尖，則在對應位置顯示圖片
+    if (noseX !== -1) {
+      // 將 PoseNet 原始座標映射到畫布中央顯示影像的比例範圍內
+      // 因為 X 軸已被 scale(-1, 1) 翻轉，圓點會自動跟隨鏡像位置
+      let x = map(noseX, 0, capture.width, -imgW / 2, imgW / 2);
+      let y = map(noseY, 0, capture.height, -imgH / 2, imgH / 2);
+
+      // 繪製圖片 (100x100 為示意大小，可自行調整)
+      image(noseImg, x, y, 100, 100);
+    }
     pop();
 
     // 轉場邏輯：進入遊戲後減少透明度
