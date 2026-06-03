@@ -69,10 +69,11 @@ function setup() {
 function initObstacles() {
   obstacles = [];
   let spacing = 350; // 長條形之間的水平間距
+  let imgW = width * 0.7;
   for (let i = 0; i < 5; i++) {
     obstacles.push({
       // 在 scale(-1, 1) 下，負值代表視覺右側。從右側外開始排列。
-      x: -width * 0.6 - i * spacing,
+      x: -imgW / 2 - i * spacing,
       h: random(100, height * 0.42), // 根據 70% 影像高度隨機
       w: 80,
       speed: 3,
@@ -147,13 +148,19 @@ function draw() {
     image(capture, 0, 0, imgW, imgH);
 
     // --- 繪製並更新長方形障礙物 ---
-    fill(0); // 黑色長方形
-    noStroke();
-    rectMode(CORNER);
-
     for (let obs of obstacles) {
+      // 根據位置決定樣式：進入畫面內為黑色，在畫面外(右側)則為半透明灰色作為預告
+      if (obs.x < -imgW / 2) {
+        fill(0, 80); // 半透明預覽
+        stroke(255, 150); // 加上淡白色外框讓預覽更明顯
+        strokeWeight(2);
+      } else {
+        fill(0); // 正式的黑色障礙物
+        noStroke();
+      }
+
+      rectMode(CORNER);
       let obsY = obs.isTop ? -imgH / 2 : imgH / 2 - obs.h;
-      
       rect(obs.x, obsY, obs.w, obs.h);
 
       // 如果遊戲未結束且已正式開始，則由右至左移動，速度隨得分增加
