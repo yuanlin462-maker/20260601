@@ -41,7 +41,7 @@ function preload() {
   // 載入背景圖片 (請確保副檔名正確，例如 .png 或 .jpg)
   bgImg = loadImage('圖片/背景.png');
   // 載入背景音樂
-  bgMusic = loadSound('音樂/bgm.mp4');
+  bgMusic = loadSound('音樂/bgm (1).mp4');
 }
 
 function setup() {
@@ -108,12 +108,12 @@ function setup() {
 function initObstacles() {
   obstacles = [];
   let spacing = 350; // 長條形之間的水平間距
-  let imgW = width * 0.7;
+  let imgW = width * 0.8;
   for (let i = 0; i < 5; i++) {
     obstacles.push({
       // 在 scale(-1, 1) 下，負值代表視覺右側。從右側外開始排列。
       x: -imgW / 2 - i * spacing,
-      h: random(100, height * 0.42), // 根據 70% 影像高度隨機
+      h: random(100, height * 0.48), // 根據 80% 影像高度隨機
       w: 80,
       speed: 3,
       isTop: i % 2 === 0,
@@ -292,10 +292,10 @@ function draw() {
     // 設定圖片繪製模式為中心
     imageMode(CENTER);
     
-    let imgW = width * 0.8; // 調整為螢幕寬度的 80%
-    let imgH = height * 0.8; // 調整為螢幕高度的 80%
+    let imgW = width * 0.8;
+    let imgH = height * 0.8;
 
-    // 繪製影像，大小為全螢幕寬高的 70%
+    // 繪製影像，大小為全螢幕寬高的 80%
     image(capture, 0, 0, imgW, imgH);
 
     // --- 繪製並更新長方形障礙物 ---
