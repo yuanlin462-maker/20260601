@@ -2,7 +2,6 @@ let capture;
 let poseNet;
 let noseX = -1;
 let noseY = -1;
-let bgMusic; // 背景音樂變數
 let bgImg; // 背景圖片變數
 let bgScrollX = 0; // 背景捲動位置
 let midImg, upImg, downImg, noseFinalImg;
@@ -25,7 +24,6 @@ let leaderboard = []; // 排行榜陣列
 let bgLerpAmount = 0; // 背景顏色漸變比例 (0 ~ 1)
 let difficultyWarningStart = 0; // 難度警告開始時間
 let hitObstacle = null; // 紀錄碰撞到的障礙物
-let isMuted = false; // 音樂靜音狀態
 
 function preload() {
   // 載入不同狀態的圖片
@@ -40,8 +38,6 @@ function preload() {
   noseImg = midImg; // 初始預設為中
   // 載入背景圖片 (請確保副檔名正確，例如 .png 或 .jpg)
   bgImg = loadImage('圖片/背景.png');
-  // 載入背景音樂
-  bgMusic = loadSound('音樂/bgm (1).mp4');
 }
 
 function setup() {
@@ -216,18 +212,6 @@ function draw() {
     text('上下移動頭部控制', 0, 55);
     pop();
 
-    // --- 繪製靜音按鈕 (右下角) ---
-    push();
-    fill(255, 150);
-    noStroke();
-    // 放在操作指南裝飾框的右下角邊緣
-    ellipse(width - 40, height - 40, 40, 40);
-    fill(0);
-    textAlign(CENTER, CENTER);
-    textSize(20);
-    text(isMuted ? '🔇' : '🔊', width - 40, height - 40);
-    pop();
-
     // 轉場邏輯：點擊後增加透明度
     if (isTransitioning) {
       fadeAlpha += 10;
@@ -382,10 +366,6 @@ function draw() {
               y > obsY && y < obsY + obs.h) {
             isGameOver = true; // 碰到長方形，停止滾動
             hitObstacle = obs; // 紀錄被碰撞的障礙物
-            // 讓背景音樂在 1.5 秒內淡出至 0
-            if (bgMusic && bgMusic.isPlaying()) {
-              bgMusic.setVolume(0, 1.5);
-            }
             // 檢查並更新最高分
             if (score > highScore) {
               highScore = score;
@@ -588,15 +568,6 @@ function draw() {
 function mousePressed() {
   // 如果在開始畫面且點擊了畫面中央的按鈕區域
   if (gameState === 'start' && !isTransitioning) {
-    // 1. 檢查「靜音」按鈕點擊 (座標: width-40, height-40, 半徑 20)
-    if (dist(mouseX, mouseY, width - 40, height - 40) < 20) {
-      isMuted = !isMuted;
-      if (bgMusic) {
-        bgMusic.setVolume(isMuted ? 0 : 0.3);
-      }
-      return; // 點擊靜音按鈕後不觸發開始遊戲
-    }
-
     let baseW = 250;
     let baseH = 60;
     
@@ -604,12 +575,6 @@ function mousePressed() {
     if (mouseX > width / 2 - baseW / 2 && mouseX < width / 2 + baseW / 2 &&
         mouseY > height / 2 - 60 - baseH / 2 && mouseY < height / 2 - 60 + baseH / 2) {
       isTransitioning = true;
-      // 重置並啟動背景音樂
-      if (bgMusic) {
-        bgMusic.stop(); // 先停止以重置播放進度
-        bgMusic.setVolume(isMuted ? 0 : 0.3); // 根據靜音狀態設定音量
-        bgMusic.loop();
-      }
     }
     
     // 檢查「查看排行榜」按鈕 (lbY = height/2 + 20)
